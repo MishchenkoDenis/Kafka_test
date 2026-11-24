@@ -2,9 +2,10 @@ from confluent_kafka import Producer
 import json
 import random as rd
 import uuid
+import time
 
 server = "localhost:9092"
-topic = "Transaction"
+Topic = "Transaction"
 interval = 5
 
 prod = Producer({
@@ -16,12 +17,12 @@ prod = Producer({
 def create_massage():
     
     message = {
-        "type":rd.choice([0,1]),
         "id":str(uuid.uuid4()),
-          "sum":str(rd.randint(100,1000)),
-          "count":str(rd.randint(1,10)),
-          "total":str(rd.randint(20,30)),
-          "name":rd.choice(["Anna", "Olga", "igor", "kot"])
+        "sum":str(rd.randint(100,1000)),
+        "count":str(rd.randint(1,10)),
+        "total":str(rd.randint(20,30)),
+        "name":rd.choice(["Anna", "Olga", "igor", "kot"]),
+        "type":rd.choice(["Оплата","Перевод"])
           }
     return message
 
@@ -35,11 +36,27 @@ def delivery(err, txt):
         print(f"Статус сообщения: {txt.offset()}")
 
 def mart(message):
-    if message["type"] == 0:
-        partiteon = 0
+    if message["type"] == "Оплата":
+        Partiteon = 0
     else:
-        partiteon = 1
+        Partiteon = 1
+
+    prod.produce(topic = Topic, key=message["id"], value = json.dumps(message).encode("utf-8"), partition=Partiteon, callback=delivery)
+    prod.poll(0)
 
 
-    
 
+def main():
+    try:
+        while True:
+            message = create_massage()
+            mart(message)
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("Конец отправки")
+    finally:
+        prod.flush()
+
+
+if __name__ == "__main__":
+    main()
