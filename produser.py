@@ -6,7 +6,7 @@ import time
 from confluent_kafka import Producer
 
 
-BOOTSTRAP_SERVERS = "localhost:9092"
+BOOTSTRAP_SERVERS = "127.0.0.1:9092"
 TOPIC = "Transaction"
 INTERVAL = 5
 
@@ -14,12 +14,13 @@ INTERVAL = 5
 producer = Producer({
     "bootstrap.servers": BOOTSTRAP_SERVERS,
     "client.id": "transaction-producer",
-    "acks": "all"
+    "acks": "all",
+    "broker.address.family": "v4"
 })
 
 
 def create_message():
-
+    
     message = {
         "id": str(uuid.uuid4()),
         "sum": random.randint(100, 1000),
