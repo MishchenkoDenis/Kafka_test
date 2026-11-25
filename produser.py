@@ -1,61 +1,96 @@
-from confluent_kafka import Producer
 import json
-import random as rd
+import random
 import uuid
 import time
 
-server = "localhost:9092"
-Topic = "Transaction"
-interval = 5
+from confluent_kafka import Producer
 
-prod = Producer({
-    "bootstrap.servers":server,
+
+BOOTSTRAP_SERVERS = "localhost:9092"
+TOPIC = "Transaction"
+INTERVAL = 5
+
+
+producer = Producer({
+    "bootstrap.servers": BOOTSTRAP_SERVERS,
     "client.id": "transaction-producer",
-    "acks":"all"
+    "acks": "all"
 })
 
-def create_massage():
-    
+
+def create_message():
+
     message = {
-        "id":str(uuid.uuid4()),
-        "sum":str(rd.randint(100,1000)),
-        "count":str(rd.randint(1,10)),
-        "total":str(rd.randint(20,30)),
-        "name":rd.choice(["Anna", "Olga", "igor", "kot"]),
-        "type":rd.choice(["Оплата","Перевод"])
-          }
+        "id": str(uuid.uuid4()),
+        "sum": random.randint(100, 1000),
+        "count": random.randint(1, 10),
+        "total": random.randint(20, 30),
+        "name": random.choice(["Anna", "Olga", "Igor", "Kot"]),
+        "type": random.choice(["Оплата", "Перевод"])
+    }
+
     return message
 
 
-def delivery(err, txt):
+def delivery_report(err, msg):
+
     if err is not None:
-        print(f"{err}")
-    else:
-        print(f"Статус сообщения: {txt.topic()}")
-        print(f"Статус сообщения: {txt.partition()}")
-        print(f"Статус сообщения: {txt.offset()}")
+        print(f"Ошибка доставки: {err}")
 
-def mart(message):
+    else:
+        print(
+            f"Доставлено | "
+            f"Topic: {msg.topic()} | "
+            f"Partition: {msg.partition()} | "
+            f"Offset: {msg.offset()}"
+        )
+
+
+def send_message(message):
+
     if message["type"] == "Оплата":
-        Partiteon = 0
+        partition = 0
+
+    elif message["type"] == "Перевод":
+        partition = 1
+
     else:
-        Partiteon = 1
+        raise ValueError("Неизвестный тип транзакции")
 
-    prod.produce(topic = Topic, key=message["id"], value = json.dumps(message).encode("utf-8"), partition=Partiteon, callback=delivery)
-    prod.poll(0)
+    producer.produce(
+        topic=TOPIC,
+        key=message["id"],
+        value=json.dumps(
+            message,
+            ensure_ascii=False
+        ).encode("utf-8"),
+        partition=partition,
+        callback=delivery_report
+    )
 
+    producer.poll(0)
 
 
 def main():
+
+    print("Producer запущен")
+
     try:
         while True:
-            message = create_massage()
-            mart(message)
-            time.sleep(interval)
+
+            message = create_message()
+
+            print(f"Отправляем: {message}")
+
+            send_message(message)
+
+            time.sleep(INTERVAL)
+
     except KeyboardInterrupt:
         print("Конец отправки")
+
     finally:
-        prod.flush()
+        producer.flush()
 
 
 if __name__ == "__main__":
